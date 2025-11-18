@@ -1,0 +1,3 @@
+D:/dev/Comp-grafica/TP2 - Raytracing/Ray-tracing-UFMG/build/CMakeFiles/raytracer.dir
+D:/dev/Comp-grafica/TP2 - Raytracing/Ray-tracing-UFMG/build/CMakeFiles/edit_cache.dir
+D:/dev/Comp-grafica/TP2 - Raytracing/Ray-tracing-UFMG/build/CMakeFiles/rebuild_cache.dir
