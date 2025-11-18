@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <algorithm>
 
 
 
@@ -34,3 +35,4 @@ struct Ray {
     }
 };
 
+void write_ppm(const std::string& filename, int width, int height, const std::vector<Vec3>& pixels);

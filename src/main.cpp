@@ -1,11 +1,25 @@
 #include "common.hpp"
 
 int main() {
-    Vec3 a(1, 2, 3);
-    Vec3 b(4, 5, 6);
-    Vec3 c = a + b;
+    const int WIDTH = 400;
+    const int HEIGHT = 300;
 
-    std::cout << "Ray Tracer ambiente configurado!" << std::endl;
-    std::cout << "Teste vector: (" << c.x << ", " << c.y << ", " << c.z << ")" << std::endl;
+    std::vector<Vec3> pixels(WIDTH * HEIGHT);
+
+    // Geração do gradiente
+    for (int j = 0; j < HEIGHT; j++) {
+        for (int i = 0; i < WIDTH; i++) {
+            double r = double(i) / (WIDTH - 1);
+            double g = double(j) / (HEIGHT - 1);
+            double b = 0.2;
+
+            pixels[j * WIDTH + i] = Vec3(r, g, b);
+        }
+    }
+
+    write_ppm("output.ppm", WIDTH, HEIGHT, pixels);
+
+    std::cout << "Imagem gerada: output.ppm" << std::endl;
+
     return 0;
 }
