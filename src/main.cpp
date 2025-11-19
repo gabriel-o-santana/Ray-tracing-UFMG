@@ -5,7 +5,7 @@ Vec3 ray_color(const Ray &r)
     Sphere sphere(Vec3(0, 0, -1), 0.5);
 
     Light light;
-    light.direction = Vec3(-1, -1, -1); // vindo de cima e da esquerda
+    light.direction = Vec3(-1, -1, -1); // direção da luz
     light.color = Vec3(1, 1, 1);        // luz branca
 
     double t;
@@ -14,13 +14,19 @@ Vec3 ray_color(const Ray &r)
         Vec3 point = r.at(t);
         Vec3 normal = (point - sphere.center).normalized();
 
-        // iluminação
+        // verificar sombra
+        if (is_in_shadow(point, light, sphere))
+        {
+            return Vec3(0.0, 0.0, 0.0); // sombra total por enquanto
+        }
+
+        // iluminação difusa (Lambert)
         Vec3 diffuse = lambert(normal, light);
 
-        return diffuse; // só luz difusa por enquanto
+        return diffuse;
     }
 
-    // fundo (céu)
+    // Fundo gradiente
     Vec3 unit_dir = r.direction.normalized();
     double u = 0.5 * (unit_dir.y + 1.0);
     return Vec3(1.0, 1.0, 1.0) * (1.0 - u) + Vec3(0.5, 0.7, 1.0) * u;

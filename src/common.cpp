@@ -22,3 +22,21 @@ Vec3 lambert(const Vec3 &normal, const Light &light)
     double ndotl = std::max(0.0, normal.normalized().dot(light.direction.normalized() * -1));
     return light.color * ndotl;
 }
+
+bool is_in_shadow(const Vec3 &point, const Light &light, const Sphere &sphere)
+{
+    Vec3 L = light.direction.normalized() * -1.0;
+
+    // ensure Vec3 * double is used (member operator), not double * Vec3 which isn't defined
+    Ray shadow_ray(point + L * (sphere.radius * 0.001), L);
+
+    double t_shadow;
+    if (hit_sphere(sphere, shadow_ray, t_shadow))
+    {
+        if (t_shadow > EPS)
+        {
+            return true;
+        }
+    }
+    return false;
+}

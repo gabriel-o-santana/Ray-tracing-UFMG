@@ -6,6 +6,8 @@
 #include <fstream>
 #include <algorithm>
 
+constexpr double EPS = 1e-6;
+
 struct Vec3
 {
     double x, y, z;
@@ -55,8 +57,17 @@ struct Light
     Vec3 color;
 };
 
+struct HitRecord
+{
+    double t;
+    Vec3 point;
+    Vec3 normal;
+};
+
 Vec3 lambert(const Vec3 &normal, const Light &light);
 
 void write_ppm(const std::string &filename, int width, int height, const std::vector<Vec3> &pixels);
 
 bool hit_sphere(const Sphere &sphere, const Ray &ray, double &t_hit);
+
+bool is_in_shadow(const Vec3 &point, const Light &light, const Sphere &sphere);
