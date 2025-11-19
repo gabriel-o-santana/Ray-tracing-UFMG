@@ -1,26 +1,40 @@
 #pragma once
-#include <iostream>
 #include <cmath>
-#include <vector>
-#include <string>
-#include <fstream>
 #include <algorithm>
-
-constexpr double EPS = 1e-6;
+#include <iostream>
+#include <vector>
+#include <limits>
 
 struct Vec3
 {
     double x, y, z;
 
-    Vec3(double x = 0, double y = 0, double z = 0) : x(x), y(y), z(z) {}
+    Vec3() {
+        x = 0;
+        y = 0;
+        z = 0;
+    }
+    Vec3(double X, double Y, double Z) {
+        x = X;
+        y = Y;
+        z = Z;
+    }
 
-    Vec3 operator+(const Vec3 &v) const { return Vec3(x + v.x, y + v.y, z + v.z); }
-    Vec3 operator-(const Vec3 &v) const { return Vec3(x - v.x, y - v.y, z - v.z); }
-    Vec3 operator*(double s) const { return Vec3(x * s, y * s, z * s); }
+    Vec3 operator+(const Vec3 &o) const { 
+        return Vec3(x + o.x, y + o.y, z + o.z); 
+    }
+    Vec3 operator-(const Vec3 &o) const { 
+        return Vec3(x - o.x, y - o.y, z - o.z); 
+    }
+    Vec3 operator*(double k) const { 
+        return Vec3(x * k, y * k, z * k); 
+    }
+    Vec3 operator/(double k) const { 
+        return Vec3(x / k, y / k, z / k); 
+    }
 
-    double dot(const Vec3 &v) const
-    {
-        return x * v.x + y * v.y + z * v.z;
+    double dot(const Vec3 &o) const { 
+        return x * o.x + y * o.y + z * o.z; 
     }
 
     Vec3 normalized() const
@@ -30,12 +44,22 @@ struct Vec3
     }
 };
 
+inline Vec3 operator*(double k, const Vec3 &v) { 
+    return v * k; 
+}
+
 struct Ray
 {
     Vec3 origin;
     Vec3 direction;
 
-    Ray(const Vec3 &o, const Vec3 &d) : origin(o), direction(d) {}
+    Ray() {
+
+    }
+    Ray(const Vec3 &o, const Vec3 &d) {
+        origin = o;
+        direction = d;
+    }
 
     Vec3 at(double t) const
     {
@@ -43,31 +67,18 @@ struct Ray
     }
 };
 
-struct Sphere
-{
-    Vec3 center;
-    double radius;
-
-    Sphere(const Vec3 &c, double r) : center(c), radius(r) {}
-};
-
 struct Light
 {
-    Vec3 direction;
-    Vec3 color;
+    Vec3 direction; // direção da luz (vinda de cima/esquerda por ex.)
+    Vec3 color;     // intensidade (1,1,1)
+    
 };
 
-struct HitRecord
-{
-    double t;
-    Vec3 point;
-    Vec3 normal;
-};
-
+// Lambert simples
 Vec3 lambert(const Vec3 &normal, const Light &light);
 
-void write_ppm(const std::string &filename, int width, int height, const std::vector<Vec3> &pixels);
+// Gerar arquivo PPM
+void write_ppm(const std::string &filename, int W, int H, const std::vector<Vec3> &pixels);
 
-bool hit_sphere(const Sphere &sphere, const Ray &ray, double &t_hit);
-
-bool is_in_shadow(const Vec3 &point, const Light &light, const Sphere &sphere);
+// Pequeno epsilon
+static constexpr double EPS = 1e-6;

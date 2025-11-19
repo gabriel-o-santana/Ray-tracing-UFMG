@@ -8,4 +8,9 @@ include_directories(include)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 
-add_executable(raytracer ${SRC_FILES})
+add_executable(raytracer
+  src/main.cpp
+  src/sphere.cpp
+  src/common.cpp
+  src/hittable.cpp
+)
