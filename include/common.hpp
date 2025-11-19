@@ -16,6 +16,11 @@ struct Vec3
     Vec3 operator-(const Vec3 &v) const { return Vec3(x - v.x, y - v.y, z - v.z); }
     Vec3 operator*(double s) const { return Vec3(x * s, y * s, z * s); }
 
+    double dot(const Vec3 &v) const
+    {
+        return x * v.x + y * v.y + z * v.z;
+    }
+
     Vec3 normalized() const
     {
         double m = std::sqrt(x * x + y * y + z * z);
@@ -43,6 +48,14 @@ struct Sphere
 
     Sphere(const Vec3 &c, double r) : center(c), radius(r) {}
 };
+
+struct Light
+{
+    Vec3 direction;
+    Vec3 color;
+};
+
+Vec3 lambert(const Vec3 &normal, const Light &light);
 
 void write_ppm(const std::string &filename, int width, int height, const std::vector<Vec3> &pixels);
 

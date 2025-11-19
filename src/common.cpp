@@ -16,3 +16,9 @@ bool hit_sphere(const Sphere &sphere, const Ray &ray, double &t_hit)
     t_hit = (-b - std::sqrt(discriminant)) / (2 * a);
     return t_hit > 0;
 }
+
+Vec3 lambert(const Vec3 &normal, const Light &light)
+{
+    double ndotl = std::max(0.0, normal.normalized().dot(light.direction.normalized() * -1));
+    return light.color * ndotl;
+}
