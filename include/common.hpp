@@ -33,6 +33,12 @@ struct Vec3
         return Vec3(x / k, y / k, z / k); 
     }
 
+    Vec3 cross(const Vec3 &o) const {
+        return Vec3(y * o.z - z * o.y,
+                    z * o.x - x * o.z,
+                    x * o.y - y * o.x);
+    }
+
     double dot(const Vec3 &o) const { 
         return x * o.x + y * o.y + z * o.z; 
     }
@@ -67,11 +73,14 @@ struct Ray
     }
 };
 
-struct Light
-{
-    Vec3 direction; // direção da luz (vinda de cima/esquerda por ex.)
-    Vec3 color;     // intensidade (1,1,1)
+struct Light {
+    Vec3 position;  // Coordenadas da fonte 
+    Vec3 color;     // Cor RGB 
     
+    // Atenuação: Constante, Linear, Quadratica 
+    double att_const;
+    double att_linear;
+    double att_quad;
 };
 
 // Lambert simples

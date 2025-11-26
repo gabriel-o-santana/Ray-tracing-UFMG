@@ -1,128 +1,84 @@
 #include "common.hpp"
-#include "hittable.hpp"
-#include "sphere.hpp"
-#include <vector>
+#include "scene.hpp" 
+#include <iostream>
 
 Vec3 background_color(const Ray& r) {
-    Vec3 d = r.direction.normalized();
-    double t = 0.5 * (d.y + 1.0);
-    // return white -> bluish gradient
-    return Vec3(1.0*(1.0 - t) + 0.5 * t, 1.0*(1.0 - t) + 0.7 * t, 1.0*(1.0 - t) + 1.0 * t);
+    return Vec3(0.5, 0.7, 1.0); 
 }
 
-// shadow test (directional light). Returns true if point is in shadow
-bool in_shadow(const Vec3& point, const Light& light, const HittableList& world) {
-    // compute vector from point TO the light: L = -light.direction
-    Vec3 L;
-    L.x = -light.direction.x;
-    L.y = -light.direction.y;
-    L.z = -light.direction.z;
-
-    // normalize
-    L = L.normalized();
-
-    // offset origin a little along L to avoid self intersection
-    Vec3 origin = point + L * (EPS * 100.0);
-
-    Ray shadowRay(origin, L);
-
-    HitRecord tmp;
-    // directional light is at infinity -> tmax can be large
-    if (world.hit(shadowRay, EPS, 1e6, tmp)) {
-        return true;
-    }
-    return false;
-}
-
-Vec3 ray_color(const Ray& r, const HittableList& world, const Light& light) {
+Vec3 ray_color(const Ray& r, const Scene& scene) {
     HitRecord rec;
-
-    if (!world.hit(r, EPS, 1e9, rec)) {
+    
+    // Se não acertar nada, retorna fundo
+    if (!scene.world.hit(r, EPS, 1e9, rec)) {
         return background_color(r);
     }
 
-    Vec3 normal = rec.normal.normalized();
-
-    // ambient term small so shadowed areas are not completely black
-    Vec3 ambient = Vec3(0.08, 0.08, 0.08);
-
-    if (in_shadow(rec.point, light, world)) {
-        return ambient;
-    }
-
-    Vec3 diffuse = lambert(normal, light);
-
-    // combine ambient + diffuse
-    Vec3 color;
-    color.x = ambient.x + diffuse.x;
-    color.y = ambient.y + diffuse.y;
-    color.z = ambient.z + diffuse.z;
-
-    return color;
+    // Placeholder visual 
+    Vec3 N = rec.normal.normalized();
+    return 0.5 * (Vec3(N.x+1, N.y+1, N.z+1)); 
 }
 
-int main() {
-    int W = 800;
-    int H = 450;
+int main(int argc, char* argv[]) {
+    // Verifica argumentos 
+    if (argc < 3) {
+        std::cerr << "Uso: " << argv[0] << " <input_scene.txt> <output.ppm> [W H]\n";
+        return 1;
+    }
 
-    std::vector<Vec3> pixels;
-    pixels.resize(W * H);
-
-    Vec3 origin;
-    origin.x = 0.0; origin.y = 0.0; origin.z = 0.0;
-
-    HittableList world;
-
-
-    Sphere* s1 = new Sphere(Vec3(0, 0, -3), 1.0);
-    Sphere* ground = new Sphere(Vec3(0, -1001, -3), 1000.0);
-
-    world.add(s1);
-
-    world.add(ground);
-
-    Light light;
-
+    const char* inputFile = argv[1];
+    const char* outputFile = argv[2];
     
-    light.direction.x = -1.0; light.direction.y = -1.0; light.direction.z = -1.0;
-    light.direction = light.direction.normalized();
-    light.color.x = 1.0; light.color.y = 1.0; light.color.z = 1.0;
+    int W = 800;
+    int H = 600; 
+    if (argc >= 5) {
+        W = std::atoi(argv[3]);
+        H = std::atoi(argv[4]);
+    }
 
-    double viewport_h = 2.0;
-    double viewport_w = (double)W / (double)H * viewport_h;
-    double focal_len = 1.0;
+    // Carregar Cena
+    Scene scene;
+    if (!scene.load(inputFile)) {
+        return 1;
+    }
 
-    Vec3 horizontal;
-    horizontal.x = viewport_w; horizontal.y = 0.0; horizontal.z = 0.0;
-    Vec3 vertical;
-    vertical.x = 0.0; vertical.y = viewport_h; vertical.z = 0.0;
+    std::cout << "Cena carregada. Renderizando " << W << "x" << H << "...\n";
 
-    Vec3 lower_left;
-    lower_left.x = origin.x - horizontal.x/2.0 - vertical.x/2.0 - 0.0;
-    lower_left.y = origin.y - horizontal.y/2.0 - vertical.y/2.0 - 0.0;
-    lower_left.z = origin.z - horizontal.z/2.0 - vertical.z/2.0 - focal_len;
+    // Setup da Camera (Sistema de coordenadas u,v,w)
+    Vec3 lookfrom = scene.camera.eye;
+    Vec3 lookat = scene.camera.at;
+    Vec3 vup = scene.camera.up;
+    double vfov = scene.camera.fovy; 
 
+    // Calculo basico de viewport
+    double theta = vfov * 3.1415926535897932385 / 180.0;
+    double h = std::tan(theta/2.0);
+    double aspect_ratio = (double)W / (double)H;
+    double viewport_height = 2.0 * h;
+    double viewport_width = aspect_ratio * viewport_height;
+
+    // Vetores da camera
+    Vec3 w = (lookfrom - lookat).normalized();
+    Vec3 u = (vup.cross(w)).normalized(); 
+    Vec3 v = w.cross(u);
+
+    Vec3 horizontal = viewport_width * u;
+    Vec3 vertical = viewport_height * v;
+    Vec3 lower_left_corner = lookfrom - horizontal/2.0 - vertical/2.0 - w;
+
+    // Render Loop
+    std::vector<Vec3> pixels(W * H);
     for (int j = H-1; j >= 0; j--) {
         for (int i = 0; i < W; i++) {
-            double u = (double)i / (double)(W - 1);
-            double v = (double)j / (double)(H - 1);
-
-            Vec3 dir;
-            dir.x = lower_left.x + horizontal.x * u + vertical.x * v - origin.x;
-            dir.y = lower_left.y + horizontal.y * u + vertical.y * v - origin.y;
-            dir.z = lower_left.z + horizontal.z * u + vertical.z * v - origin.z;
-
-            Ray r(origin, dir);
-
-            Vec3 color = ray_color(r, world, light);
-
-
-            int row = H - 1 - j; 
-            pixels[row * W + i] = color;
+            double s = (double)i / (W-1);
+            double t = (double)j / (H-1);
+            
+            Ray r(lookfrom, lower_left_corner + s*horizontal + t*vertical - lookfrom);
+            pixels[(H-1-j)*W + i] = ray_color(r, scene);
         }
     }
 
-    write_ppm("output.ppm", W, H, pixels);
-
+    write_ppm(outputFile, W, H, pixels);
+    std::cout << "Concluido: " << outputFile << "\n";
     return 0;
 }

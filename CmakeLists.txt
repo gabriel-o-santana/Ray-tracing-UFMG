@@ -6,11 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(include)
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
-
+# Adicionei src/scene.cpp aqui
 add_executable(raytracer
   src/main.cpp
   src/sphere.cpp
   src/common.cpp
   src/hittable.cpp
+  src/scene.cpp
 )

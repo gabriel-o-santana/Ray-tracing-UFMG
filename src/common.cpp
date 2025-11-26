@@ -1,26 +1,17 @@
-#include "common.hpp"
+#include "../include/common.hpp"
 #include <fstream>
 
 Vec3 lambert(const Vec3& normal, const Light& light) {
-
-    Vec3 L = Vec3(-light.direction.x, -light.direction.y, -light.direction.z);
-    // normalize L and normal
-    Vec3 Ln = L.normalized();
-    Vec3 Nn = normal.normalized();
-
-    double diff = Nn.dot(Ln);
-    if (diff < 0.0) diff = 0.0;
-
-    // retorno intensidade da luz (multiplicada pela cor da luz)
-    Vec3 out;
-    out.x = light.color.x * diff;
-    out.y = light.color.y * diff;
-    out.z = light.color.z * diff;
-    return out;
+    return Vec3(0,0,0); 
 }
 
 void write_ppm(const std::string& filename, int W, int H, const std::vector<Vec3>& pixels) {
     std::ofstream out(filename);
+
+    if (!out.is_open()) {
+        std::cerr << "Erro ao criar arquivo " << filename << std::endl;
+        return;
+    }
 
     out << "P3\n";
     out << W << " " << H << "\n255\n";
