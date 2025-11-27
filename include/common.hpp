@@ -26,9 +26,15 @@ struct Vec3
     Vec3 operator-(const Vec3 &o) const { 
         return Vec3(x - o.x, y - o.y, z - o.z); 
     }
+    
     Vec3 operator*(double k) const { 
         return Vec3(x * k, y * k, z * k); 
     }
+    
+    Vec3 operator*(const Vec3 &o) const {
+        return Vec3(x * o.x, y * o.y, z * o.z);
+    }
+
     Vec3 operator/(double k) const { 
         return Vec3(x / k, y / k, z / k); 
     }
@@ -46,10 +52,12 @@ struct Vec3
     Vec3 normalized() const
     {
         double m = std::sqrt(x * x + y * y + z * z);
+        if (m == 0) return Vec3(0,0,0);
         return Vec3(x / m, y / m, z / m);
     }
 };
 
+// Multiplicação inversa (numero * vetor)
 inline Vec3 operator*(double k, const Vec3 &v) { 
     return v * k; 
 }
@@ -59,9 +67,7 @@ struct Ray
     Vec3 origin;
     Vec3 direction;
 
-    Ray() {
-
-    }
+    Ray() {}
     Ray(const Vec3 &o, const Vec3 &d) {
         origin = o;
         direction = d;
@@ -74,20 +80,19 @@ struct Ray
 };
 
 struct Light {
-    Vec3 position;  // Coordenadas da fonte 
-    Vec3 color;     // Cor RGB 
+    Vec3 position;  
+    Vec3 color;     
     
-    // Atenuação: Constante, Linear, Quadratica 
+    // Atenuação
     double att_const;
     double att_linear;
     double att_quad;
 };
 
-// Lambert simples
+// Lambert simples (mantido para compatibilidade, mas não usado no main atual)
 Vec3 lambert(const Vec3 &normal, const Light &light);
 
 // Gerar arquivo PPM
 void write_ppm(const std::string &filename, int W, int H, const std::vector<Vec3> &pixels);
 
-// Pequeno epsilon
 static constexpr double EPS = 1e-6;

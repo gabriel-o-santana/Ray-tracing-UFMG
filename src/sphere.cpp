@@ -1,35 +1,34 @@
+#pragma once
+#include "common.hpp"
 #include "sphere.hpp"
+#include <vector>
 #include <cmath>
 
 bool Sphere::hit(const Ray& r, double tmin, double tmax, HitRecord& rec) const {
-    Vec3 oc;
-    oc.x = r.origin.x - center.x;
-    oc.y = r.origin.y - center.y;
-    oc.z = r.origin.z - center.z;
-
+    Vec3 oc = r.origin - center;
     double a = r.direction.dot(r.direction);
-    double b = oc.dot(r.direction);
+    double half_b = oc.dot(r.direction);
     double c = oc.dot(oc) - radius * radius;
+    double discriminant = half_b * half_b - a * c;
 
-    double discriminant = b*b - a*c;
-    if (discriminant < 0.0) return false;
+    if (discriminant < 0) return false;
+    double sqrtd = std::sqrt(discriminant);
 
-    double sq = std::sqrt(discriminant);
-
-    double root = (-b - sq) / a;
+    // Encontra a raiz mais proxima dentro do intervalo
+    double root = (-half_b - sqrtd) / a;
     if (root < tmin || root > tmax) {
-        root = (-b + sq) / a;
-        if (root < tmin || root > tmax) return false;
+        root = (-half_b + sqrtd) / a;
+        if (root < tmin || root > tmax)
+            return false;
     }
 
     rec.t = root;
-    rec.point = r.at(root);
+    rec.point = r.at(rec.t);
+    Vec3 outward_normal = (rec.point - center) / radius;
+    rec.normal = outward_normal; 
 
-    Vec3 outward;
-    outward.x = (rec.point.x - center.x) / radius;
-    outward.y = (rec.point.y - center.y) / radius;
-    outward.z = (rec.point.z - center.z) / radius;
+    rec.pigmentIndex = this->pigmentIndex;
+    rec.finishIndex = this->finishIndex;
 
-    rec.normal = outward;
     return true;
 }
