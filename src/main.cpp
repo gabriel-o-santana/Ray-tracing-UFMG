@@ -3,7 +3,6 @@
 #include <iostream>
 #include <cmath>
 
-// Resolve a cor do ponto baseado no tipo de pigmento
 Vec3 get_pigment_color(const Pigment& pig, const Vec3& p) {
     if (pig.type == SOLID) {
         return pig.color1;
@@ -30,21 +29,29 @@ bool in_shadow(const Scene& scene, const Vec3& point, const Vec3& lightPos) {
     return false;
 }
 
-// Funcao Auxiliar para calcular reflexao de vetor
 Vec3 reflect(const Vec3& v, const Vec3& n) {
     return v - 2 * v.dot(n) * n;
 }
 
-Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
+// Implementacao da Lei de Snell para refracao
+Vec3 refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
+    double cos_theta = std::min((-1.0 * uv).dot(n), 1.0);
+    Vec3 r_out_perp =  etai_over_etat * (uv + cos_theta*n);
+    double r_out_parallel_sq = 1.0 - r_out_perp.dot(r_out_perp);
+    
+    // Se for negativo, ocorreu Reflexao Interna Total (tratado no caller)
+    if (r_out_parallel_sq < 0) return Vec3(0,0,0);
+    
+    Vec3 r_out_parallel = -std::sqrt(std::fabs(r_out_parallel_sq)) * n;
+    return r_out_perp + r_out_parallel;
+}
 
-    if (depth <= 0) {
-        return Vec3(0,0,0);
-    }
+Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
+    if (depth <= 0) return Vec3(0,0,0);
 
     HitRecord rec;
-    // Intersecao
     if (!scene.world.hit(r, 0.001, 1e9, rec)) {
-        return Vec3(0.5, 0.7, 1.0); // Cor do Ceu (Background)
+        return Vec3(0.5, 0.7, 1.0); 
     }
 
     const Pigment& pig = scene.pigments[rec.pigmentIndex];
@@ -54,9 +61,9 @@ Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
     Vec3 N = rec.normal.normalized();
     Vec3 V = r.direction.normalized(); 
 
-    // Iluminacao Local (Phong)
-    Vec3 localColor = surfaceColor * fin.ka; // Ambiente
+    Vec3 localColor = surfaceColor * fin.ka; 
 
+    // Iluminacao Direta (Phong) 
     for (const auto& light : scene.lights) {
         Vec3 L_vec = light.position - rec.point;
         double d = std::sqrt(L_vec.dot(L_vec));
@@ -66,29 +73,44 @@ Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
 
         double attenuation = 1.0 / (light.att_const + light.att_linear * d + light.att_quad * d * d);
         
-        // Difusa
         double diff = std::max(0.0, N.dot(L));
         Vec3 diffuse = surfaceColor * light.color * (fin.kd * diff);
 
-        // Especular
-        Vec3 R_light = reflect(-1.0 * L, N); // Reflexo da luz
+        Vec3 R_light = reflect(-1.0 * L, N); 
         double spec = std::pow(std::max(0.0, R_light.dot(-1.0*V)), fin.alpha);
         Vec3 specular = light.color * (fin.ks * spec);
 
         localColor = localColor + (diffuse + specular) * attenuation;
     }
 
-    //  Reflexão Recursiva 
+    //  Reflexão (Mirror)
     if (fin.kr > 0) {
         Vec3 reflectDir = reflect(V, N).normalized();
-
         Ray scattered(rec.point + reflectDir * 1e-4, reflectDir);
-        
+        localColor = localColor + ray_color(scattered, scene, depth - 1) * fin.kr;
+    }
 
-        Vec3 reflectedColor = ray_color(scattered, scene, depth - 1);
+    // Refração (Vidro/Agua) 
+    if (fin.kt > 0) {
+        bool entering = V.dot(N) < 0;
+
+        double refraction_ratio = entering ? (1.0 / fin.ior) : fin.ior;
+
+        Vec3 unit_n = entering ? N : -1.0 * N;
         
-        // Soma a cor refletida ponderada por kr
-        localColor = localColor + reflectedColor * fin.kr;
+        double cos_theta = std::min((-1.0 * V).dot(unit_n), 1.0);
+        double sin_theta = std::sqrt(1.0 - cos_theta * cos_theta);
+        bool cannot_refract = refraction_ratio * sin_theta > 1.0;
+
+        Vec3 direction;
+        if (cannot_refract) {
+            direction = reflect(V, unit_n);
+        } else {
+            direction = refract(V, unit_n, refraction_ratio);
+        }
+
+        Ray scattered(rec.point + direction * 1e-4, direction);
+        localColor = localColor + ray_color(scattered, scene, depth - 1) * fin.kt;
     }
 
     return localColor;
@@ -106,7 +128,7 @@ int main(int argc, char* argv[]) {
     int W = 800, H = 600;
     if (argc >= 5) { W = std::atoi(argv[3]); H = std::atoi(argv[4]); }
 
-    std::cout << "Renderizando " << W << "x" << H << " com reflexoes...\n";
+    std::cout << "Renderizando " << W << "x" << H << " com refracao...\n";
 
     Vec3 w = (scene.camera.eye - scene.camera.at).normalized();
     Vec3 u = (scene.camera.up.cross(w)).normalized();
@@ -122,8 +144,6 @@ int main(int argc, char* argv[]) {
     Vec3 lower_left = scene.camera.eye - horizontal/2 - vertical/2 - w;
 
     std::vector<Vec3> pixels(W * H);
-
-    // Max Depth de recursão = 5 (padrão razoável)
     int max_depth = 5;
 
     for (int j = H-1; j >= 0; j--) {
@@ -131,8 +151,6 @@ int main(int argc, char* argv[]) {
             double s = (double)i / (W-1);
             double t = (double)j / (H-1);
             Ray r(scene.camera.eye, lower_left + s*horizontal + t*vertical - scene.camera.eye);
-            
-            // Inicia recursao
             pixels[(H-1-j)*W + i] = ray_color(r, scene, max_depth);
         }
     }
