@@ -14,7 +14,13 @@ Vec3 get_pigment_color(const Pigment& pig, const Vec3& p) {
         if ((std::abs(cx + cy + cz) % 2) == 0) return pig.color1;
         else return pig.color2;
     }
-    return Vec3(1, 0, 1);
+    else if (pig.type == TEXMAP && pig.texture) {
+        double s = pig.p0[0]*p.x + pig.p0[1]*p.y + pig.p0[2]*p.z + pig.p0[3];
+        double r = pig.p1[0]*p.x + pig.p1[1]*p.y + pig.p1[2]*p.z + pig.p1[3];
+        
+        return pig.texture->sample(s, r);
+    }
+    return Vec3(1, 0, 1); 
 }
 
 bool in_shadow(const Scene& scene, const Vec3& point, const Vec3& lightPos) {
@@ -39,7 +45,6 @@ Vec3 refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
     Vec3 r_out_perp =  etai_over_etat * (uv + cos_theta*n);
     double r_out_parallel_sq = 1.0 - r_out_perp.dot(r_out_perp);
     
-    // Se for negativo, ocorreu Reflexao Interna Total (tratado no caller)
     if (r_out_parallel_sq < 0) return Vec3(0,0,0);
     
     Vec3 r_out_parallel = -std::sqrt(std::fabs(r_out_parallel_sq)) * n;
@@ -61,18 +66,27 @@ Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
     Vec3 N = rec.normal.normalized();
     Vec3 V = r.direction.normalized(); 
 
-    Vec3 localColor = surfaceColor * fin.ka; 
+    //Cálculo da iluminação
+    Vec3 ambientLightColor = (scene.lights.size() > 0) ? scene.lights[0].color : Vec3(1,1,1);
+    
+    Vec3 localColor = surfaceColor * ambientLightColor * fin.ka; 
 
-    // Iluminacao Direta (Phong) 
-    for (const auto& light : scene.lights) {
+    for (size_t i = 1; i < scene.lights.size(); i++) {
+        const auto& light = scene.lights[i];
+        
         Vec3 L_vec = light.position - rec.point;
         double d = std::sqrt(L_vec.dot(L_vec));
         Vec3 L = L_vec.normalized();
 
         if (in_shadow(scene, rec.point, light.position)) continue;
 
-        double attenuation = 1.0 / (light.att_const + light.att_linear * d + light.att_quad * d * d);
-        
+        double denom = light.att_const + light.att_linear * d + light.att_quad * d * d;
+        double attenuation = 1.0;
+        if (denom > 1e-6) {
+             attenuation = 1.0 / denom;
+        }
+
+        // Modelo de Phong (Difusa + Especular)
         double diff = std::max(0.0, N.dot(L));
         Vec3 diffuse = surfaceColor * light.color * (fin.kd * diff);
 
@@ -83,16 +97,16 @@ Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
         localColor = localColor + (diffuse + specular) * attenuation;
     }
 
-    //  Reflexão (Mirror)
+    //Ray Tracing
+
     if (fin.kr > 0) {
         Vec3 reflectDir = reflect(V, N).normalized();
         Ray scattered(rec.point + reflectDir * 1e-4, reflectDir);
         localColor = localColor + ray_color(scattered, scene, depth - 1) * fin.kr;
     }
 
-    // Refração (Vidro/Agua) 
     if (fin.kt > 0) {
-        bool entering = V.dot(N) < 0;
+        bool entering = V.dot(N) < 0; 
 
         double refraction_ratio = entering ? (1.0 / fin.ior) : fin.ior;
 
@@ -100,6 +114,7 @@ Vec3 ray_color(const Ray& r, const Scene& scene, int depth) {
         
         double cos_theta = std::min((-1.0 * V).dot(unit_n), 1.0);
         double sin_theta = std::sqrt(1.0 - cos_theta * cos_theta);
+        
         bool cannot_refract = refraction_ratio * sin_theta > 1.0;
 
         Vec3 direction;

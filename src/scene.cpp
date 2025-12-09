@@ -1,40 +1,35 @@
 #include "../include/scene.hpp"
 #include <fstream>
-#include <sstream>
 #include <iostream>
 
 bool Scene::load(const std::string& filename) {
     std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Erro ao abrir arquivo: " << filename << std::endl;
-        return false;
-    }
+    if (!file.is_open()) return false;
 
-    // Camera 
+    // --- Camera ---
     file >> camera.eye.x >> camera.eye.y >> camera.eye.z;
     file >> camera.at.x >> camera.at.y >> camera.at.z;
     file >> camera.up.x >> camera.up.y >> camera.up.z;
     file >> camera.fovy;
 
-    // Luzes 
+    // --- Luzes ---
     int numLights;
     file >> numLights;
     for (int i = 0; i < numLights; i++) {
         Light l;
-        // grandezas: pos(3), cor(3), att(3)
         file >> l.position.x >> l.position.y >> l.position.z;
         file >> l.color.x >> l.color.y >> l.color.z;
         file >> l.att_const >> l.att_linear >> l.att_quad;
         lights.push_back(l);
     }
 
-    // Pigmentos 
+    // --- Pigmentos ---
     int numPigments;
     file >> numPigments;
     for (int i = 0; i < numPigments; i++) {
         Pigment p;
         std::string typeStr;
-        file >> typeStr; // "solid", "checker", etc.
+        file >> typeStr; 
 
         if (typeStr == "solid") {
             p.type = SOLID;
@@ -48,18 +43,23 @@ bool Scene::load(const std::string& filename) {
         }
         else if (typeStr == "texmap") {
             p.type = TEXMAP;
-
-
             std::string texFile;
-            file >> texFile; 
+            file >> texFile;
+            
+            // Carrega textura
+            p.texture = std::make_shared<Texture>();
+            if (!p.texture->load(texFile)) {
+                std::cerr << "Erro ao carregar textura: " << texFile << "\n";
+            }
 
-            double dummy;
-            for(int k=0; k<8; k++) file >> dummy;
+            // Le os 8 coeficientes (P0 e P1)
+            for(int k=0; k<4; k++) file >> p.p0[k];
+            for(int k=0; k<4; k++) file >> p.p1[k];
         }
         pigments.push_back(p);
     }
 
-    // Acabamentos 
+    // --- Acabamentos ---
     int numFinishes;
     file >> numFinishes;
     for (int i = 0; i < numFinishes; i++) {
@@ -68,7 +68,7 @@ bool Scene::load(const std::string& filename) {
         finishes.push_back(f);
     }
 
-    // Objetos 
+    // --- Objetos ---
     int numObjects;
     file >> numObjects;
     for (int i = 0; i < numObjects; i++) {
@@ -80,22 +80,20 @@ bool Scene::load(const std::string& filename) {
         if (objType == "sphere") { 
             double x, y, z, r;
             file >> x >> y >> z >> r;
-            // Cria a esfera e adiciona ao mundo
-            Sphere* s = new Sphere(Vec3(x,y,z), r, pigIdx, finIdx);
-            world.add(s);
+            world.add(new Sphere(Vec3(x,y,z), r, pigIdx, finIdx));
         }
         else if (objType == "polyhedron") { 
             int numFaces;
             file >> numFaces;
-            // Consumir as linhas das faces para não quebrar o parser
-            // (Implementação do poliedro fica para depois)
-            double a, b, c, d;
+            
+            std::vector<Plane> faces;
             for(int k=0; k<numFaces; k++) {
+                double a, b, c, d;
                 file >> a >> b >> c >> d;
+                faces.push_back({a, b, c, d});
             }
-            std::cout << "Aviso: Polyhedron lido mas ignorado.\n";
+            world.add(new Polyhedron(faces, pigIdx, finIdx));
         }
     }
-
     return true;
 }

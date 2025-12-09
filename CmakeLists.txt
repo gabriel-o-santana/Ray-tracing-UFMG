@@ -13,4 +13,5 @@ add_executable(raytracer
   src/common.cpp
   src/hittable.cpp
   src/scene.cpp
+  src/polyhedron.cpp
 )
